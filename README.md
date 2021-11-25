@@ -20,31 +20,31 @@
 ## Azure
 
 * Subscription
-  - Island
+  - Island 
 * Region
   - Town
 * Microsoft.Compute/disks
 * Microsoft.Compute/virtualMachines
-  - Building
+  - Building ![building](tiles/kenney/isometric_buildings/PNG/buildingTiles_018.png)
 * Microsoft.Compute/virtualMachineScaleSets
-  - Building
-  - One floor per VM
+  - Building ![building](tiles/kenney/isometric_buildings/PNG/buildingTiles_014.png)
+  - One floor per VM ![floor](tiles/kenney/isometric_buildings/PNG/buildingTiles_032.png)
 * Microsoft.ContainerService/managedClusters
 * Microsoft.DBforPostgreSQL/servers
 * Microsoft.ManagedIdentity/userAssignedIdentities
 * Microsoft.Network/loadBalancers
   - Road crow's foot
 * Microsoft.Network/networkInterfaces
-  - Garage under the building
+  - Garage under the building ![garage](tiles/kenney/isometric_city/PNG/cityTiles_040.png)
 * Microsoft.Network/networkSecurityGroups
 * Microsoft.Network/networkWatchers
 * Microsoft.Network/privateDnsZones
 * Microsoft.Network/privateDnsZones/virtualNetworkLinks
 * Microsoft.Network/privateEndpoints
-  - Tunnel entrance
+  - Tunnel entrance ![tunnel](tiles/kenney/isometric_city/PNG/cityTiles_026.png)
 * Microsoft.Network/publicIPAddresses
 * Microsoft.Network/routeTables
-  - Round about
+  - Round about ![round about](tiles/kenney/isometric_city/PNG/cityTiles_082.png)
 * Microsoft.Network/virtualNetworks
 * Microsoft.OperationalInsights/workspaces
 * Microsoft.OperationsManagement/solutions
