@@ -20,8 +20,10 @@
 ## Azure
 
 * Subscription
-  - Island 
+  - Archipelago
 * Region
+  - Island 
+* Resource group
   - Town
 * Microsoft.Compute/disks
 * Microsoft.Compute/virtualMachines
