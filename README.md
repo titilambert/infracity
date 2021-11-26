@@ -17,6 +17,46 @@
 ![sheet_allCars](tiles/kenney/isometric_vehicles/Spritesheet/sheet_allCars.png)
 ![allTiles_sheet](tiles/kenney/isometric_blocks/Spritesheet/allTiles_sheet.png)
 
+## Kubernetes
+
+* Cluster
+  - Archipelago
+* Node
+  - Island
+  - Object Color ?
+* Namespace
+  - Object Color ?
+  - Island
+  - Town ?
+* Pod
+  - Building ![building](tiles/kenney/isometric_buildings/PNG/buildingTiles_014.png)
+  - One floor per Container ![floor](tiles/kenney/isometric_buildings/PNG/buildingTiles_032.png)
+* Deployment
+  - District
+  - Building with red color
+* ReplicatSet
+  - District
+  - Building with red color
+* StateFulSet
+  - District
+  - Building with green color
+* DaemonSet
+  - District
+  - Building with blue color
+* Service
+* Ingress
+* Cronjob
+* ConfigMap
+* Secret
+  - Garage ?
+* Service account
+* PVC
+* PV
+* Role
+* ClusterRole
+* RoleBinding
+* ClusterRoleBinding
+
 ## Azure
 
 * Subscription
