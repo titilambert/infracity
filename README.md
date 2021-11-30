@@ -1,6 +1,16 @@
 # infracity
 
 
+## Dev
+
+```
+virtualenv env -p `command -v python3`
+source env/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+
 ## Javascript ISOmetric engines
 
 * Traviso - https://www.travisojs.com - https://github.com/axaq/traviso.js
