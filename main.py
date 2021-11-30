@@ -57,6 +57,12 @@ for district_data in town_coords:
                 else:
                     object_name = "base_red_right"
                 object_id = get_object_id(objects, object_name)
+
+            if tile_name.startswith("street_"):
+                # TODO check the tiles around the current one (tile_x + pos_x , tile_y + pos_y)
+                # And check if there any other streets to connect the streets together
+                pass
+
             tile_id = get_tile_id(tiles, tile_name)
             try:
                 groundMap[tile_x + pos_x]['row'][tile_y + pos_y] = tile_id
@@ -64,6 +70,15 @@ for district_data in town_coords:
                     objectsMap[tile_x + pos_x]['row'][tile_y + pos_y] = object_id
             except:
                 import ipdb; ipdb.set_trace()
+
+
+# File empty tile with park
+for row_index, row in enumerate(groundMap):
+    for column_index, tile_id in enumerate(row["row"]):
+        if tile_id == 0:
+            tile_id = get_tile_id(tiles, "park")
+            groundMap[row_index]['row'][column_index] = tile_id
+
 
 
 # Generate final map data
