@@ -18,7 +18,7 @@ def read_objects(object_folder):
     for index, png_object in enumerate(os.listdir(object_folder)):
         objects[str(index + 1)] = {
             "movable": False,
-            "interactive": False,
+            "interactive": True,
             "rowSpan": 1, "columnSpan": 1,
             "noTransparency": False,
             "floor": False,
