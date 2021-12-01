@@ -3,7 +3,7 @@ import math
 
 from kubernetes import client, config
 
-from arrange import arrange_town
+from arrange import arrange_town, arrange_island
 from read_images import get_tile_id, get_object_id
 
 
@@ -12,24 +12,69 @@ class Island:
     def __init__(self, name, towns):
         self.name = name
         self.towns = towns
+        self._ground_map = []
+        self._objects_map = []
+        self._town_packing = []
 
     @property
     def surface(self):
         return self.dimensions["x"] * self.dimensions["y"]
 
     @property
+    def ground_map(self):
+        return self._ground_map
+
+    @property
+    def objects_map(self):
+        return self._objects_map
+
+
+    @property
     def dimensions(self):
         dim = {"x": None, "y": None}
-        town_surface = sum([(math.sqrt(t.surface) + 2) ** 2 for t in self.towns.values()])
-        dim["x"] = dim["y"] = int(math.sqrt(town_surface)) + 3
+        dim["x"] = len(self._ground_map[0])
+        dim["y"] = len(self._ground_map)
         return dim
 
-    def draw(self):
-        groundMap = []
-        for row in range(self.dimensions["x"]):
-            column = ["0"] * self.dimensions["y"]
-            groundMap.append({"row": column})
-        return groundMap
+    def arrange(self, tile_list, object_list):
+        for town in self.towns.values():
+            town.arrange(tile_list, object_list)
+
+        self._town_packing = arrange_island(self)
+
+        # Try to find the size of the rectangle containing all the town
+        fullsize_x = max(sum(max([(tc[1], tc[3]) for tc in self._town_packing])), sum(max([(tc[3], tc[1]) for tc in self._town_packing])))
+        fullsize_y = max(sum(max([(tc[2], tc[4]) for tc in self._town_packing])), sum(max([(tc[4], tc[2]) for tc in self._town_packing])))
+
+        for column in range(fullsize_x):
+            self._ground_map.append([0 for i in range(fullsize_y)])
+            self._objects_map.append([0 for i in range(fullsize_y)])
+
+        # Place objects and tiles on the groundmap and objectsmap
+        for town_data in self._town_packing:
+            pos_x = town_data[1]
+            pos_y = town_data[2]
+            length_x = town_data[3]
+            length_y = town_data[4]
+            town_name = town_data[-1]
+            print(town_name, length_x, length_y)
+            town = self.towns[town_name]
+            for tile_x in range(length_x):
+                for tile_y in range(length_y):
+                    try:
+                        self._ground_map[tile_x + pos_x][tile_y + pos_y] = town.ground_map[tile_x][tile_y]
+                    except:
+                        import ipdb;ipdb.set_trace()
+                    self._objects_map[tile_x + pos_x][tile_y + pos_y] = town.objects_map[tile_x][tile_y]
+
+        # Fill the gaps by parks
+        for row_index, row in enumerate(self._ground_map):
+            for column_index, tile_id in enumerate(row):
+                if tile_id == 0:
+                    tile_id = get_tile_id(tile_list, "park")
+                    self._ground_map[row_index][column_index] = tile_id
+
+
 
 
 class Town:
@@ -57,17 +102,25 @@ class Town:
 
     @property
     def dimensions(self):
-        dim = {"x": None, "y": None}
-        dim["x"] = max(sum(max([(tc[1], tc[3]) for tc in self._district_packing])), sum(max([(tc[3], tc[1]) for tc in self._district_packing])))
-        dim["y"] = max(sum(max([(tc[2], tc[4]) for tc in self._district_packing])), sum(max([(tc[4], tc[2]) for tc in self._district_packing])))
+        dim = {"x": 0, "y": 0}
+        if self._ground_map:
+            dim["x"] = len(self._ground_map)
+            dim["y"] = len(self._ground_map[0])
         return dim
 
     def arrange(self, tile_list, object_list):
         self._district_packing = arrange_town(self)
+        # Skip Empty namespace
+        if not self._district_packing:
+            return
 
-        for column in range(self.dimensions["x"]):
-            self._ground_map.append([0 for i in range(self.dimensions["y"])])
-            self._objects_map.append([0 for i in range(self.dimensions["y"])])
+        # Try to find the size of the rectangle containing all the district
+        fullsize_x = max(sum(max([(tc[1], tc[3]) for tc in self._district_packing])), sum(max([(tc[3], tc[1]) for tc in self._district_packing])))
+        fullsize_y = max(sum(max([(tc[2], tc[4]) for tc in self._district_packing])), sum(max([(tc[4], tc[2]) for tc in self._district_packing])))
+
+        for column in range(fullsize_x):
+            self._ground_map.append([0 for i in range(fullsize_y)])
+            self._objects_map.append([0 for i in range(fullsize_y)])
 
         # Place objects and tiles on the groundmap and objectsmap
         for district_data in self._district_packing:
@@ -237,7 +290,7 @@ def dump_data():
     daemonsets = appsv1.list_daemon_set_for_all_namespaces()
     deployments = appsv1.list_deployment_for_all_namespaces()
     #replica_sets = appsv1.list_replica_set_for_all_namespaces()
-    #stateful_sets = appsv1.list_stateful_set_for_all_namespaces()
+    statefulsets = appsv1.list_stateful_set_for_all_namespaces()
 
     k8s_cluster = Island("Kubernetes", {})
     for namespace in namespaces.items:
@@ -249,6 +302,9 @@ def dump_data():
     for daemonset in daemonsets.items:
         district = District(daemonset.metadata.name, "daemonset")
         k8s_cluster.towns[daemonset.metadata.namespace].districts[daemonset.metadata.name] = district
+    for statefulset in statefulsets.items:
+        district = District(statefulset.metadata.name, "statefulsets")
+        k8s_cluster.towns[statefulset.metadata.namespace].districts[statefulset.metadata.name] = district
 
     for pod in pods.items:
         building = Building(pod.metadata.name)
@@ -265,6 +321,8 @@ def dump_data():
         if pod.metadata.owner_references[0].kind == 'ReplicaSet':
             owner_name = pod.metadata.owner_references[0].name.rsplit("-", 1)[0]
         elif pod.metadata.owner_references[0].kind == 'DaemonSet':
+            owner_name = pod.metadata.owner_references[0].name
+        elif pod.metadata.owner_references[0].kind == 'StatefulSet':
             owner_name = pod.metadata.owner_references[0].name
         else:
             continue
