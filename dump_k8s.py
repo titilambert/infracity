@@ -43,8 +43,8 @@ class Island:
         self._town_packing = arrange_island(self)
 
         # Try to find the size of the rectangle containing all the town
-        fullsize_x = max(sum(max([(tc[1], tc[3]) for tc in self._town_packing])), sum(max([(tc[3], tc[1]) for tc in self._town_packing])))
-        fullsize_y = max(sum(max([(tc[2], tc[4]) for tc in self._town_packing])), sum(max([(tc[4], tc[2]) for tc in self._town_packing])))
+        fullsize_x = max([sum([tc[1], tc[3]]) for tc in self._town_packing])
+        fullsize_y = max([sum([tc[2], tc[4]]) for tc in self._town_packing])
 
         for column in range(fullsize_x):
             self._ground_map.append([0 for i in range(fullsize_y)])
@@ -57,14 +57,11 @@ class Island:
             length_x = town_data[3]
             length_y = town_data[4]
             town_name = town_data[-1]
-            print(town_name, length_x, length_y)
+            #print(town_name, length_x, length_y)
             town = self.towns[town_name]
             for tile_x in range(length_x):
                 for tile_y in range(length_y):
-                    try:
-                        self._ground_map[tile_x + pos_x][tile_y + pos_y] = town.ground_map[tile_x][tile_y]
-                    except:
-                        import ipdb;ipdb.set_trace()
+                    self._ground_map[tile_x + pos_x][tile_y + pos_y] = town.ground_map[tile_x][tile_y]
                     self._objects_map[tile_x + pos_x][tile_y + pos_y] = town.objects_map[tile_x][tile_y]
 
         # Fill the gaps by parks
@@ -74,6 +71,57 @@ class Island:
                     tile_id = get_tile_id(tile_list, "park")
                     self._ground_map[row_index][column_index] = tile_id
 
+
+
+        # Add a 3 tile margin arround the island
+        tile_sea_id = get_tile_id(tile_list, "sea_full")
+        row_length = len(self._ground_map[0])
+        margin_row = [tile_sea_id for i in range(row_length + 6)]
+
+        tile_beach_right_id = get_tile_id(tile_list, "beach_right")
+        tile_beach_left_id = get_tile_id(tile_list, "beach_left")
+        for row in self._ground_map:
+            row.insert(0, tile_beach_right_id)
+            row.insert(0, tile_sea_id)
+            row.insert(0, tile_sea_id)
+            row.append(tile_beach_left_id)
+            row.append(tile_sea_id)
+            row.append(tile_sea_id)
+
+        tile_beach_bottom_id = get_tile_id(tile_list, "beach_bottom")
+        tile_beach_corner_right_id = get_tile_id(tile_list, "beach_corner_right")
+        tile_beach_corner_bottom_id = get_tile_id(tile_list, "beach_corner_bottom")
+        margin_top_row = [tile_sea_id, tile_sea_id, tile_beach_corner_right_id] + \
+                [tile_beach_bottom_id for i in range(row_length)] + \
+                [tile_beach_corner_bottom_id, tile_sea_id, tile_sea_id]
+        self._ground_map.insert(0, margin_top_row)
+        self._ground_map.insert(0, margin_row)
+        self._ground_map.insert(0, margin_row)
+
+        tile_beach_top_id = get_tile_id(tile_list, "beach_top")
+        tile_beach_corner_left_id = get_tile_id(tile_list, "beach_corner_left")
+        tile_beach_corner_top_id = get_tile_id(tile_list, "beach_corner_top")
+        margin_bottom_row = [tile_sea_id, tile_sea_id, tile_beach_corner_top_id] + \
+                [tile_beach_top_id for i in range(row_length)] + \
+                [tile_beach_corner_left_id, tile_sea_id, tile_sea_id]
+        self._ground_map.append(margin_bottom_row)
+        self._ground_map.append(margin_row)
+        self._ground_map.append(margin_row)
+
+        margin_row = [0 for i in range(len(self._objects_map[0]) + 6)]
+        for row in self._objects_map:
+            row.insert(0, 0)
+            row.insert(0, 0)
+            row.insert(0, 0)
+            row.append(0)
+            row.append(0)
+            row.append(0)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.append(margin_row)
+        self._objects_map.append(margin_row)
+        self._objects_map.append(margin_row)
 
 
 
@@ -115,8 +163,8 @@ class Town:
             return
 
         # Try to find the size of the rectangle containing all the district
-        fullsize_x = max(sum(max([(tc[1], tc[3]) for tc in self._district_packing])), sum(max([(tc[3], tc[1]) for tc in self._district_packing])))
-        fullsize_y = max(sum(max([(tc[2], tc[4]) for tc in self._district_packing])), sum(max([(tc[4], tc[2]) for tc in self._district_packing])))
+        fullsize_x = max([sum([tc[1], tc[3]]) for tc in self._district_packing])
+        fullsize_y = max([sum([tc[2], tc[4]]) for tc in self._district_packing])
 
         for column in range(fullsize_x):
             self._ground_map.append([0 for i in range(fullsize_y)])
@@ -208,7 +256,6 @@ class Town:
         self._objects_map.append(margin_row)
         self._objects_map.append(margin_row)
         self._objects_map.append(margin_row)
-        #import ipdb;ipdb.set_trace()
 
 class District:
     """Deployment/DaemonSet/StateFulSet."""
@@ -230,6 +277,7 @@ class District:
         # Create rectangles with differents width
         # Add calculation to count the routes aroud the district
         dim = {}
+        # TODO handle self.buildings == 0
         if len(self.buildings) == 1:
             # +-+
             # |B|
