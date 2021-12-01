@@ -54,14 +54,18 @@ python main.py
   - District
   - Building with blue color
 * Service
+  - Door ? Garage Door ?
 * Ingress
+  - Sign ?
 * Cronjob
 * ConfigMap
 * Secret
-  - Garage ?
+  - Bank with one floor per secret ?
 * Service account
+  - Robot moving in the street ? or close to the pods/workloads using it ?
 * PVC
 * PV
+  - warehouse
 * Role
 * ClusterRole
 * RoleBinding
