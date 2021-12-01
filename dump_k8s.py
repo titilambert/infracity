@@ -3,6 +3,10 @@ import math
 
 from kubernetes import client, config
 
+from arrange import arrange_town
+from read_images import get_tile_id, get_object_id
+
+
 class Island:
 
     def __init__(self, name, towns):
@@ -34,6 +38,9 @@ class Town:
     def __init__(self, name):
         self.name = name
         self.districts = {}
+        self._ground_map = []
+        self._objects_map = []
+        self._district_packing = []
 
     @property
     def surface(self):
@@ -41,40 +48,114 @@ class Town:
         return sum([d.surface for d in self.districts.values()])
     
     @property
+    def ground_map(self):
+        return self._ground_map
+
+    @property
+    def objects_map(self):
+        return self._objects_map
+
+    @property
     def dimensions(self):
-        small_districts = 0
-        sdx = 0
-        sdy = 0
-        i = 0
-        """
-        1 : 3 x 3 
-        2 : 3 x 5
-        3 : 5 x 5
-        4 : 5 x 5
-        5 : 5 x 7
-        6 : 5 x 7
-        7 : 7 x 7
-        8 : 7 x 7
-        9 : 7 x 7
-        10 : 7 x 9
-        11 : 7 x 9
-        12 : 7 x 9
-        12 : 7 x 9
-        """
-        small_districts = [d for d in self.districts.values() if d.surface == 9]
-        # Looking for the next above square
-        current = math.sqrt(len(small_districts))
-        while math.sqrt(int(current)**2) != current:
-            current = int(current) + 1
-        sdx = sdy = current + current + 1
-        #if math.sqrt(len(small_districts)) == int(math.sqrt(len(small_districts))):
-        #    sdx = sdy = math.sqrt(len(small_districts)) + math.sqrt(len(small_districts)) + 1
-        #else:
-        #    import ipdb;ipdb.set_trace()
+        dim = {"x": None, "y": None}
+        dim["x"] = max(sum(max([(tc[1], tc[3]) for tc in self._district_packing])), sum(max([(tc[3], tc[1]) for tc in self._district_packing])))
+        dim["y"] = max(sum(max([(tc[2], tc[4]) for tc in self._district_packing])), sum(max([(tc[4], tc[2]) for tc in self._district_packing])))
+        return dim
 
+    def arrange(self, tile_list, object_list):
+        self._district_packing = arrange_town(self)
 
-        
+        for column in range(self.dimensions["x"]):
+            self._ground_map.append([0 for i in range(self.dimensions["y"])])
+            self._objects_map.append([0 for i in range(self.dimensions["y"])])
 
+        # Place objects and tiles on the groundmap and objectsmap
+        for district_data in self._district_packing:
+            pos_x = district_data[1]
+            pos_y = district_data[2]
+            length_x = district_data[3]
+            length_y = district_data[4]
+            district_name = district_data[-1]
+            #print(district_name, length_x, length_y)
+            #district = self.districts[district_name]
+            for tile_x in range(length_x):
+                for tile_y in range(length_y):
+                    object_id = None
+                    if tile_x == 0 and tile_y == 0:
+                        tile_name = "street_corner_right"
+                    elif tile_x == 0 and tile_y == length_y - 1:
+                        tile_name = "street_corner_bottom"
+                    elif tile_x == length_x - 1 and tile_y == 0:
+                        tile_name = "street_corner_top"
+                    elif tile_x == length_x - 1 and tile_y == length_y - 1:
+                        tile_name = "street_corner_left"
+                    elif tile_x == 0:
+                        tile_name = "street_straight_top"
+                    elif tile_x == length_x - 1:
+                        tile_name = "street_straight_bottom"
+                    elif tile_y == 0:
+                        tile_name = "street_straight_left"
+                    elif tile_y == length_y - 1:
+                        tile_name = "street_straight_right"
+                    else:
+                        tile_name = "grass_full"
+                        if length_x > length_y:
+                            object_name = "base_red_left"
+                        else:
+                            object_name = "base_red_right"
+                        object_id = get_object_id(object_list, object_name)
+
+                    if tile_name.startswith("street_"):
+                        # TODO check the tiles around the current one (tile_x + pos_x , tile_y + pos_y)
+                        # And check if there any other streets to connect the streets together
+                        pass
+
+                    tile_id = get_tile_id(tile_list, tile_name)
+                    self._ground_map[tile_x + pos_x][tile_y + pos_y] = tile_id
+                    if object_id is not None:
+                        self._objects_map[tile_x + pos_x][tile_y + pos_y] = object_id
+
+        # Fill the gaps by parks
+        for row_index, row in enumerate(self._ground_map):
+            for column_index, tile_id in enumerate(row):
+                if tile_id == 0:
+                    tile_id = get_tile_id(tile_list, "park")
+                    self._ground_map[row_index][column_index] = tile_id
+
+        # Add a 3 tile margin arround the city
+        tile_grass_id = get_tile_id(tile_list, "grass_full")
+        margin_row = [tile_grass_id for i in range(len(self._ground_map[0]) + 6)]
+
+        for row in self._ground_map:
+            row.insert(0, tile_grass_id)
+            row.insert(0, tile_grass_id)
+            row.insert(0, tile_grass_id)
+            row.append(tile_grass_id)
+            row.append(tile_grass_id)
+            row.append(tile_grass_id)
+        self._ground_map.insert(0, margin_row)
+        self._ground_map.insert(0, margin_row)
+        self._ground_map.insert(0, margin_row)
+        self._ground_map.append(margin_row)
+        self._ground_map.append(margin_row)
+        self._ground_map.append(margin_row)
+
+        margin_row = [0 for i in range(len(self._objects_map[0]) + 6)]
+
+        for row in self._objects_map:
+            row.insert(0, 0)
+            row.insert(0, 0)
+            row.insert(0, 0)
+            row.append(0)
+            row.append(0)
+            row.append(0)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.insert(0, margin_row)
+        self._objects_map.append(margin_row)
+        self._objects_map.append(margin_row)
+        self._objects_map.append(margin_row)
+        #import ipdb;ipdb.set_trace()
 
 class District:
     """Deployment/DaemonSet/StateFulSet."""
