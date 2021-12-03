@@ -7,7 +7,7 @@ def read_tiles(tile_folder):
     map_tiles = {}
     for index, png_tile in enumerate(os.listdir(tile_folder)):
         tiles[str(index + 1)] = {
-            "movable": False,
+            "movable": True,
             "path": BASE_DIR + "/tiles/" + png_tile,
             "name": png_tile,
         } 
@@ -16,10 +16,15 @@ def read_tiles(tile_folder):
 def read_objects(object_folder):
     objects = {}
     for index, png_object in enumerate(os.listdir(object_folder)):
+        column_span = 1
+        if png_object == "church.png":
+            column_span = 3
+        if png_object == "firestation.png":
+            column_span = 2
         objects[str(index + 1)] = {
             "movable": False,
             "interactive": True,
-            "rowSpan": 1, "columnSpan": 1,
+            "rowSpan": 1, "columnSpan": column_span,
             "noTransparency": False,
             "floor": False,
             "name": png_object,

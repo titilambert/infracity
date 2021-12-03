@@ -1,9 +1,12 @@
 import re
 import math
+import random
 
 from kubernetes import client, config
+from rectpack import newPacker, PackingMode
+import rectpack.maxrects as maxrects
 
-from arrange import arrange_town, arrange_island
+from arrange import arrange_island
 from read_images import get_tile_id, get_object_id
 
 
@@ -64,12 +67,14 @@ class Island:
                     self._ground_map[tile_x + pos_x][tile_y + pos_y] = town.ground_map[tile_x][tile_y]
                     self._objects_map[tile_x + pos_x][tile_y + pos_y] = town.objects_map[tile_x][tile_y]
 
-        # Fill the gaps by parks
+        # Fill the gaps by forest
         for row_index, row in enumerate(self._ground_map):
             for column_index, tile_id in enumerate(row):
                 if tile_id == 0:
-                    tile_id = get_tile_id(tile_list, "park")
+                    tile_id = get_tile_id(tile_list, "grass_full")
+                    object_id = get_object_id(object_list, "forest_{}".format(random.randint(1, 10)))
                     self._ground_map[row_index][column_index] = tile_id
+                    self._objects_map[row_index][column_index] = object_id
 
 
 
@@ -157,7 +162,17 @@ class Town:
         return dim
 
     def arrange(self, tile_list, object_list):
-        self._district_packing = arrange_town(self)
+        # Bin packing
+        packer = newPacker(mode=PackingMode.Offline, pack_algo=maxrects.MaxRectsBlsf, rotation=1)
+        for district in self.districts.values():
+            packer.add_rect(district.dimensions["x"], district.dimensions["y"], district.name)
+        packer.add_rect(3, 3, "bank")
+        packer.add_rect(5, 5, "church")
+        packer.add_rect(4, 4, "firestation")
+        packer.add_bin(1000, 1000)
+        packer.pack()
+        self._district_packing =  packer.rect_list()
+
         # Skip Empty namespace
         if not self._district_packing:
             return
@@ -178,11 +193,21 @@ class Town:
             length_y = district_data[4]
             district_name = district_data[-1]
             #print(district_name, length_x, length_y)
-            #district = self.districts[district_name]
+            if district_name in ("church", "bank", "firestation"):
+                district = None
+            else:
+                district = self.districts[district_name]
             for tile_x in range(length_x):
                 for tile_y in range(length_y):
                     object_id = None
-                    if tile_x == 0 and tile_y == 0:
+                    if district is None and district_name in ("church",) and tile_x == length_x - 3 and tile_y == 1:
+                        tile_name = "grass_full"
+                        object_id = get_object_id(object_list, district_name)
+
+                    elif district is None and district_name in ("bank", "firestation") and tile_x == length_x - 2 and tile_y == 1:
+                        tile_name = "grass_full"
+                        object_id = get_object_id(object_list, district_name)
+                    elif tile_x == 0 and tile_y == 0:
                         tile_name = "street_corner_right"
                     elif tile_x == 0 and tile_y == length_y - 1:
                         tile_name = "street_corner_bottom"
@@ -199,17 +224,29 @@ class Town:
                     elif tile_y == length_y - 1:
                         tile_name = "street_straight_right"
                     else:
-                        tile_name = "grass_full"
-                        if length_x > length_y:
-                            object_name = "base_red_left"
+                        if district is None:
+                            tile_name = "grass_full"
+                        elif len(district.buildings) == 0:
+                            # workload with 0 replica
+                            tile_name = "earth_full"
                         else:
-                            object_name = "base_red_right"
-                        object_id = get_object_id(object_list, object_name)
+                            tile_name = "grass_full"
+                            nb_floors = len([b for b in district.buildings.values()][0].floors)
+                            #import ipdb;ipdb.set_trace()
+                            if district.type == "deployment":
+                                color = "red"
+                            elif district.type == "daemonset":
+                                color = "brown"
+                            elif district.type == "statefulset":
+                                color = "yellow"
+                            else:
+                                color = "greygreen"
 
-                    if tile_name.startswith("street_"):
-                        # TODO check the tiles around the current one (tile_x + pos_x , tile_y + pos_y)
-                        # And check if there any other streets to connect the streets together
-                        pass
+                            if length_x > length_y:
+                                object_name = f"building_{color}_left_{nb_floors}_floors"
+                            else:
+                                object_name = f"building_{color}_right_{nb_floors}_floors"
+                            object_id = get_object_id(object_list, object_name)
 
                     tile_id = get_tile_id(tile_list, tile_name)
                     self._ground_map[tile_x + pos_x][tile_y + pos_y] = tile_id
@@ -265,6 +302,7 @@ class District:
         self._type = wtype
         self.buildings = {}  # should be equal to replicas
 
+    @property
     def type(self):
         return self._type
 
@@ -277,8 +315,7 @@ class District:
         # Create rectangles with differents width
         # Add calculation to count the routes aroud the district
         dim = {}
-        # TODO handle self.buildings == 0
-        if len(self.buildings) == 1:
+        if len(self.buildings) <= 1:
             # +-+
             # |B|
             # +-+
@@ -351,10 +388,11 @@ def dump_data():
         district = District(daemonset.metadata.name, "daemonset")
         k8s_cluster.towns[daemonset.metadata.namespace].districts[daemonset.metadata.name] = district
     for statefulset in statefulsets.items:
-        district = District(statefulset.metadata.name, "statefulsets")
+        district = District(statefulset.metadata.name, "statefulset")
         k8s_cluster.towns[statefulset.metadata.namespace].districts[statefulset.metadata.name] = district
 
     for pod in pods.items:
+        # TODO capture pod status to put fire if there is an error
         building = Building(pod.metadata.name)
         if not pod.status.container_statuses:
             print("Skipping pod {}/{}".format(pod.metadata.namespace, pod.metadata.name))

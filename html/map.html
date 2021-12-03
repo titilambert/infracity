@@ -29,19 +29,23 @@
     
     function onTileSelect(rowIndex, columnIndex)
     {
-			    console.log("READY")
-			console.log(rowIndex, columnIndex)
-		}
+        console.log("TILE")
+    }
     function onObjectSelectCallback(obj)
     {
-			    console.log("OBJECT")
-			console.log(obj)
-		}
+        console.log("OBJECT")
+        return
+    }
 // this method will be called when the engine is ready
     function onEngineInstanceReady()
     {
         pixiRoot.stage.addChild(engine);
-			    console.log("READY")
+        console.log("READY")
+        /*
+        obj = engine.getObjectsAtRowAndColumn(0, 0)[0]
+        console.log(obj)
+        engine.checkAndMoveObjectToLocation(obj, {c: 30, r: 15}, 5)
+        */
     }
     ////// Here, we create our traviso instance and add on top of pixi
     
@@ -52,16 +56,17 @@
         isoAngle: 27,
         engineInstanceReadyCallback : onEngineInstanceReady,
         objectSelectCallback: onObjectSelectCallback,
-	highlightTargetTile: false,
-	highlightPath: false,
-	tileHighlightAnimated: false,
-	//tileSelectCallback: onTileSelect,
+        dontAutoMoveToTile: true,
+        followCharacter: false,
+        highlightTargetTile: false,
+        highlightPath: false,
+        tileHighlightAnimated: false,
+        //tileSelectCallback: onTileSelect,
         mapDataPath: "mapDataIC.json", // the path to the json file that defines map data, required
         //assetsToLoad: ["assets/assets_map.json", "assets/assets_characters.json"] // array of paths to the assets that are desired to be loaded by traviso, no need to use if assets are already loaded to PIXI cache, default null
     };
 
     var engine = TRAVISO.getEngineInstance(instanceConfig, { logEnabled: true });
-    //pixiRoot.stage.addChild(engine);
 
         </script>
     </body>
