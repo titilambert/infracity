@@ -6,8 +6,8 @@
 ```
 virtualenv env -p `command -v python3`
 source env/bin/activate
-pip install -r requirements.txt
-python main.py
+python setup.py develop
+infracity && python3 -m http.server 8000
 ```
 
 
