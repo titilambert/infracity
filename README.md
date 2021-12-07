@@ -7,9 +7,9 @@
 virtualenv env -p `command -v python3`
 source env/bin/activate
 python setup.py develop
-infracity && python3 -m http.server 8000
+infracity
 ```
-
+Then go to http://127.0.0.1:5000
 
 ## Javascript ISOmetric engines
 
