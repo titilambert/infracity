@@ -1,15 +1,20 @@
 import json
+import os
+
+from flask import render_template, url_for, g
+from flask import Flask
 
 from infracity.dump_k8s import dump_data
-from infracity.read_images import read_tiles, read_objects, get_tile_id, get_object_id
-
-BASE_FOLDER = "."
+from infracity.read_images import read_tiles, read_objects, read_vehicles, get_tile_id, get_object_id
 
 
-def main():
+def generate_map():
+    global map_data
     # Read tile and object images
-    tiles = read_tiles("html/images/tiles")
-    objects = read_objects("html/images/objects")
+    current_dir = os.path.dirname(__file__)
+    tiles = read_tiles(os.path.join(current_dir, 'static', 'images', 'tiles'))
+    objects = read_objects(os.path.join(current_dir, 'static', 'images', 'objects'))
+    objects = read_vehicles(os.path.join(current_dir, 'static', 'images', 'vehicles'), objects)
 
     # Get Cluster data
     k8s_cluster = dump_data()
@@ -27,11 +32,51 @@ def main():
     }
 
     # Write json file
-    with open("html/mapDataIC.json", "w") as fhic:
-        json.dump(map_data, fhic, indent=4, sort_keys=True)
+    #with open("html/mapDataIC.json", "w") as fhic:
+    #    json.dump(map_data, fhic, indent=4, sort_keys=True)
+    return map_data, k8s_cluster
 
-    print("Please run: python3 -m http.server 8000")
-    print("And go to: http://127.0.0.1:8000/html/map.html")
+
+def create_app():
+    app = Flask("infracity")
+    app.secret_key = b'_gdsg5#y2L"F4Q8z\n\xec]/'
+    return app
+
+
+
+def main():
+    MAP_DATA, K8S_CLUSTER = generate_map()
+
+    app = create_app()
+
+    @app.route('/')
+    def index():
+        return render_template("index.html")
+
+    @app.route('/vehicles')
+    def vehicles():
+        map_data = MAP_DATA.copy()
+        vehicles_by_town = {}
+        for town in K8S_CLUSTER.towns.values():
+            vehicles_by_town[town.name] = {}
+            for vehicle in town.vehicles.values():
+                vehicles_by_town[town.name][vehicle.name] = [{"x": s["x"] + 6, "y": s["y"] + 6} for s in vehicle.stops]
+        return vehicles_by_town
+
+    @app.route('/mapdata.json')
+    def mapdata():
+        map_data = MAP_DATA.copy()
+        for tile in map_data['tiles'].values():
+            if not tile['path'].startswith('/static/'):
+                tile['path'] = url_for("static", filename=tile['path'])
+        for obj in map_data['objects'].values():
+            for visuals in obj['visuals'].values():
+                for frame in visuals['frames']:
+                    if not frame['path'].startswith('/static/'):
+                        frame['path'] = url_for("static", filename=frame['path'])
+        return map_data
+
+    app.run()
 
 
 if __name__ == "__main__":

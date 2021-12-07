@@ -11,6 +11,7 @@ class Block:
         self.buildings = {}  # should be equal to replicas
         self._position = {}
         self._dimensions = {}
+        self.vehicles = {}
 
     @property
     def type(self):
@@ -26,7 +27,7 @@ class Block:
 
     @property
     def height(self):
-        return len(next(iter(self.buildings.values())).floors)
+        return min(len(next(iter(self.buildings.values())).floors), 5)
 
     def get_object_image(self, orientation):
         return f"building_{self.color}_{orientation}_{self.height}_floors"

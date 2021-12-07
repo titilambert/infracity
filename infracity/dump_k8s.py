@@ -14,6 +14,31 @@ from infracity.town import Town
 from infracity.block import Block
 from infracity.building import Building
 from infracity.floor import Floor
+from infracity.vehicle import Vehicle
+
+
+def get_secrets(workload_spec, block):
+    # search for secrets:
+    for container in workload_spec.template.spec.containers:
+        if container.env:
+            for env in container.env:
+                if hasattr(env.value_from, "secret_key_ref") and env.value_from.secret_key_ref:
+                    secret_name = env.value_from.secret_key_ref.name
+                    if secret_name in block.vehicles:
+                        vehicle = block.vehicles[secret_name]
+                    else:
+                        vehicle = Vehicle(secret_name, "ambulance", "bank")
+                    block.vehicles[secret_name] = vehicle
+
+    if workload_spec.template.spec.volumes:
+        for volume in workload_spec.template.spec.volumes:
+            if volume.secret:
+                secret_name = volume.secret.secret_name
+                if secret_name in block.vehicles:
+                    vehicle = block.vehicles[secret_name]
+                else:
+                    vehicle = Vehicle(secret_name, "ambulance", "bank")
+                block.vehicles[secret_name] = vehicle
 
 
 def dump_data():
@@ -26,7 +51,7 @@ def dump_data():
 
     namespaces = v1.list_namespace()
     pods = v1.list_pod_for_all_namespaces()
-    #secrets = v1.list_secret_for_all_namespaces()
+    secrets = v1.list_secret_for_all_namespaces()
     #service_accounts = v1.list_service_account_for_all_namespaces()
     #services = v1.list_service_for_all_namespaces()
     #config_maps = v1.list_config_map_for_all_namespaces()
@@ -44,17 +69,21 @@ def dump_data():
 
     for deployment in deployments.items:
         block = Block(deployment.metadata.name, "deployment", "red")
+        get_secrets(deployment.spec, block)
         k8s_cluster.towns[deployment.metadata.namespace].blocks[deployment.metadata.name] = block
     for daemonset in daemonsets.items:
         block = Block(daemonset.metadata.name, "daemonset", "brown")
+        get_secrets(daemonset.spec, block)
         k8s_cluster.towns[daemonset.metadata.namespace].blocks[daemonset.metadata.name] = block
     for statefulset in statefulsets.items:
         block = Block(statefulset.metadata.name, "statefulset", "yellow")
+        get_secrets(statefulset.spec, block)
         k8s_cluster.towns[statefulset.metadata.namespace].blocks[statefulset.metadata.name] = block
 
     for pod in pods.items:
         # TODO capture pod status to put fire if there is an error
         building = Building(pod.metadata.name)
+
         if not pod.status.container_statuses:
             print("Skipping pod {}/{}".format(pod.metadata.namespace, pod.metadata.name))
             continue

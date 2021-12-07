@@ -1,2 +1,3 @@
 kubernetes==19.15.0
 rectpack==0.2.2
+Flask==2.0.2

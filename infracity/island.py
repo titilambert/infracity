@@ -78,6 +78,10 @@ class Island:
             town_name = town_data[-1]
             #print(town_name, length_x, length_y)
             town = self.towns[town_name]
+            town.set_position(town_data[1], town_data[2])
+            # set vehicles start pos
+            for vehicle in town.vehicles.values():
+                vehicle.stops = [{"x": s["x"] + town_data[1], "y": s["y"] + town_data[2]} for s in vehicle.stops]
             for tile_x in range(length_x):
                 for tile_y in range(length_y):
                     self._ground_map[tile_x + pos_x][tile_y + pos_y] = town.ground_map[tile_x][tile_y]

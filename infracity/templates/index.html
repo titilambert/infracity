@@ -11,8 +11,8 @@
             }
         </style>
         
-        <script src="js/pixi.min.js"></script>
-        <script src="js/traviso.min.js"></script>
+        <script src="{{ url_for('static', filename='js/pixi.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/traviso.min.js') }}"></script>
     </head>
     <body>
         <script>
@@ -27,31 +27,45 @@
     // add the renderer view element to the DOM
     document.body.appendChild(pixiRoot.view);
     
-	function getRndInteger(min, max) {
-  return Math.floor(Math.random() * (max - min)) + min;
-}
     function onTileSelect(rowIndex, columnIndex)
     {
-        console.log("TILE")
+      console.log("TILE")
     }
     function onObjectSelectCallback(obj)
     {
-        console.log("OBJECT")
-
-			    toto  = engine.checkAndMoveObjectToLocation(obj, {c: getRndInteger(4, 19), r: getRndInteger(4, 20)}, 3)
-                            console.log(toto)
+      console.log("OBJECT SELECTED")
+      console.log(obj)
+    }
+    function onObjectReachedDestination(obj) {
+      next_step = obj.step + 1
+      if (next_step >= obj.trip.length) {
+         next_step = 0
+      }
+      obj.step = next_step
+      engine.checkAndMoveObjectToLocation(obj, {c: obj.trip[next_step]["y"], r: obj.trip[next_step]["x"]}, 2)
     }
 // this method will be called when the engine is ready
     function onEngineInstanceReady()
     {
         pixiRoot.stage.addChild(engine);
         console.log("READY")
-        
-        obj = engine.getObjectsAtRowAndColumn(10, 10)[0]
-        console.log(obj)
-        toto  = engine.checkAndMoveObjectToLocation(obj, {c: 23, r: 49}, 50)
-			    console.log(toto)
-        
+        fetch("{{ url_for('vehicles') }}")
+          .then(function(response) {
+            return response.json()
+        })
+        .then(function(data) {
+	  Object.keys(data).forEach(namespace => {
+	    Object.keys(data[namespace]).forEach(vehicle => {
+              start_pos = data[namespace][vehicle][0]
+              next_pos = data[namespace][vehicle][1]
+              obj = engine.getObjectsAtRowAndColumn(start_pos["x"], start_pos["y"])[0]
+              obj.name = vehicle
+              obj.trip = data[namespace][vehicle]
+              obj.step = 1
+              engine.checkAndMoveObjectToLocation(obj, {c: data[namespace][vehicle][1]["y"], r: data[namespace][vehicle][1]["x"]}, 2)
+            })
+          })
+        })
     }
     ////// Here, we create our traviso instance and add on top of pixi
     
@@ -60,8 +74,9 @@
     var instanceConfig = {
         tileHeight: 64,
         isoAngle: 27,
-        engineInstanceReadyCallback : onEngineInstanceReady,
+        engineInstanceReadyCallback: onEngineInstanceReady,
         objectSelectCallback: onObjectSelectCallback,
+	objectReachedDestinationCallback: onObjectReachedDestination,
         dontAutoMoveToTile: true,
         followCharacter: false,
         highlightTargetTile: false,
@@ -69,7 +84,7 @@
         highlightPath: false,
         tileHighlightAnimated: false,
         //tileSelectCallback: onTileSelect,
-        mapDataPath: "mapDataIC.json", // the path to the json file that defines map data, required
+        mapDataPath: "{{ url_for('mapdata') }}", // the path to the json file that defines map data, required
         //assetsToLoad: ["assets/assets_map.json", "assets/assets_characters.json"] // array of paths to the assets that are desired to be loaded by traviso, no need to use if assets are already loaded to PIXI cache, default null
     };
 
