@@ -10,23 +10,22 @@
                 background-color: #000000;
             }
         </style>
-        
         <script src="{{ url_for('static', filename='js/pixi.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/traviso.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/traviso.min.js') }}"></script>
     </head>
     <body>
         <script>
 
     ////// Here, we initialize the pixi application
     var pixiRoot = new PIXI.Application({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: window.innerWidth - 5,
+        height: window.innerHeight - 5,
         backgroundColor: 0x9cd4e2,
     });
 
     // add the renderer view element to the DOM
     document.body.appendChild(pixiRoot.view);
-    
+
     function onTileSelect(rowIndex, columnIndex)
     {
       console.log("TILE")
@@ -34,7 +33,10 @@
     function onObjectSelectCallback(obj)
     {
       console.log("OBJECT SELECTED")
-      console.log(obj)
+      text = pixiRoot.stage.children[4]
+      text.text = obj.name
+      console.log(text)
+
     }
     function onObjectReachedDestination(obj) {
       next_step = obj.step + 1
@@ -49,13 +51,45 @@
     {
         pixiRoot.stage.addChild(engine);
         console.log("READY")
+
+        // create buttons
+        var btnZoomIn = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/zoom_in.png') }}"));
+        pixiRoot.stage.addChild(btnZoomIn);
+        var btnZoomOut = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/zoom_out.png') }}"));
+        pixiRoot.stage.addChild(btnZoomOut);
+        var btnSelected = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/selected.png') }}"));
+        pixiRoot.stage.addChild(btnSelected);
+        var text = new PIXI.Text("", {fontFamily: 'Arial', fontSize: 24, fill: 0x000000, align: 'center'})
+        pixiRoot.stage.addChild(text);
+        // set position
+        btnZoomOut.position.x = window.innerWidth - 5 - 75;
+        btnZoomOut.position.y = window.innerHeight - 5 - 75;
+        btnZoomIn.position.x = btnZoomOut.position.x
+        btnZoomIn.position.y = btnZoomOut.position.y - 50;
+        btnSelected.position.y = btnZoomOut.position.y;
+        btnSelected.position.x = window.innerWidth / 2 - 300;
+        text.position.x = btnSelected.position.x + 10
+        text.position.y = btnSelected.position.y + 10
+        // add click callbacks
+        btnZoomIn.interactive = btnZoomIn.buttonMode = true;
+        btnZoomOut.interactive = btnZoomOut.buttonMode = true;
+        btnZoomIn.click = btnZoomIn.tap = function(data)
+        {
+            engine.zoomIn();
+        };
+
+        btnZoomOut.click = btnZoomOut.tap = function(data)
+        {
+            engine.zoomOut();
+        };
+
         fetch("{{ url_for('vehicles') }}")
           .then(function(response) {
             return response.json()
         })
         .then(function(data) {
-	  Object.keys(data).forEach(namespace => {
-	    Object.keys(data[namespace]).forEach(vehicle => {
+          Object.keys(data).forEach(namespace => {
+            Object.keys(data[namespace]).forEach(vehicle => {
               start_pos = data[namespace][vehicle][0]
               next_pos = data[namespace][vehicle][1]
               obj = engine.getObjectsAtRowAndColumn(start_pos["x"], start_pos["y"])[0]
@@ -68,7 +102,7 @@
         })
     }
     ////// Here, we create our traviso instance and add on top of pixi
-    
+
     // engine-instance configuration object
     // https://www.travisojs.com/blog/tutorial/2015/03/15/engine-configuration.html
     var instanceConfig = {
@@ -76,7 +110,7 @@
         isoAngle: 27,
         engineInstanceReadyCallback: onEngineInstanceReady,
         objectSelectCallback: onObjectSelectCallback,
-	objectReachedDestinationCallback: onObjectReachedDestination,
+        objectReachedDestinationCallback: onObjectReachedDestination,
         dontAutoMoveToTile: true,
         followCharacter: false,
         highlightTargetTile: false,
