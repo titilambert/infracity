@@ -60,8 +60,25 @@ def main():
         for town in K8S_CLUSTER.towns.values():
             vehicles_by_town[town.name] = {}
             for vehicle in town.vehicles.values():
+
                 vehicles_by_town[town.name][vehicle.name] = [{"x": s["x"] + 6, "y": s["y"] + 6} for s in vehicle.stops]
         return vehicles_by_town
+
+
+    @app.route('/blocks')
+    def blocks():
+        map_data = MAP_DATA.copy()
+        blocks_by_town = {}
+        for town in K8S_CLUSTER.towns.values():
+            blocks_by_town[town.name] = {}
+            for block in town.blocks.values():
+                blocks_by_town[town.name][block.name] = []
+                for pos_x in range(block.length_x - 2):
+                    for pos_y in range(block.length_y - 2):
+                        blocks_by_town[town.name][block.name].append({
+                            "x": pos_x + block.position_x + town.row + 7,
+                            "y": pos_y + block.position_y + town.col + 7})
+        return blocks_by_town
 
     @app.route('/mapdata.json')
     def mapdata():

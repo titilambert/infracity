@@ -2,7 +2,7 @@
 <html>
     <head>
         <link rel="shortcut icon" type="image/png" href="/img/favicon.png">
-        <title>Traviso.js - Example 1 - Basic World</title>
+        <title>Infra City</title>
         <style>
             body {
                 margin: 0;
@@ -25,6 +25,7 @@
 
     // add the renderer view element to the DOM
     document.body.appendChild(pixiRoot.view);
+    var POINTERS = []
 
     function onTileSelect(rowIndex, columnIndex)
     {
@@ -32,11 +33,23 @@
     }
     function onObjectSelectCallback(obj)
     {
-      console.log("OBJECT SELECTED")
-      text = pixiRoot.stage.children[4]
-      text.text = obj.name
-      console.log(text)
-
+      // Set town name
+      townText = pixiRoot.stage.children[5]
+      townText.text = obj.town
+      // Set obj name
+      blockText = pixiRoot.stage.children[6]
+      blockText.text = obj.name
+      // Create pointer
+      var pointer = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/pointer.png') }}"));
+      if (POINTERS.length > 0) {
+        POINTERS[0].destroy()
+      }
+      // Save pointer
+      POINTERS[0] = pointer
+      // Show pointer
+      pointer.position.x = - 15
+      pointer.position.y = - 100
+      obj.addChild(pointer)
     }
     function onObjectReachedDestination(obj) {
       next_step = obj.step + 1
@@ -44,6 +57,7 @@
          next_step = 0
       }
       obj.step = next_step
+      // TODO find a way to way 1 or 2 seconds before going to the next stop
       engine.checkAndMoveObjectToLocation(obj, {c: obj.trip[next_step]["y"], r: obj.trip[next_step]["x"]}, 2)
     }
 // this method will be called when the engine is ready
@@ -57,19 +71,29 @@
         pixiRoot.stage.addChild(btnZoomIn);
         var btnZoomOut = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/zoom_out.png') }}"));
         pixiRoot.stage.addChild(btnZoomOut);
-        var btnSelected = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/selected.png') }}"));
-        pixiRoot.stage.addChild(btnSelected);
-        var text = new PIXI.Text("", {fontFamily: 'Arial', fontSize: 24, fill: 0x000000, align: 'center'})
-        pixiRoot.stage.addChild(text);
+        var boxBlockSelected = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/selected.png') }}"));
+        pixiRoot.stage.addChild(boxBlockSelected);
+        var boxTownSelected = new PIXI.Sprite(PIXI.Texture.from("{{ url_for('static', filename='images/ui/selected.png') }}"));
+        pixiRoot.stage.addChild(boxTownSelected);
+        var townText = new PIXI.Text("", {fontFamily: 'Arial', fontSize: 24, fill: 0x000000, align: 'center'})
+        pixiRoot.stage.addChild(townText);
+        var blockText = new PIXI.Text("", {fontFamily: 'Arial', fontSize: 24, fill: 0x000000, align: 'center'})
+        pixiRoot.stage.addChild(blockText);
+
         // set position
         btnZoomOut.position.x = window.innerWidth - 5 - 75;
         btnZoomOut.position.y = window.innerHeight - 5 - 75;
         btnZoomIn.position.x = btnZoomOut.position.x
         btnZoomIn.position.y = btnZoomOut.position.y - 50;
-        btnSelected.position.y = btnZoomOut.position.y;
-        btnSelected.position.x = window.innerWidth / 2 - 300;
-        text.position.x = btnSelected.position.x + 10
-        text.position.y = btnSelected.position.y + 10
+			    console.log(btnZoomIn)
+        boxTownSelected.position.y = btnZoomIn.position.y;
+        boxTownSelected.position.x = window.innerWidth / 2 - 300;
+        boxBlockSelected.position.y = btnZoomOut.position.y;
+        boxBlockSelected.position.x = window.innerWidth / 2 - 300;
+        blockText.position.x = boxBlockSelected.position.x + 10
+        blockText.position.y = boxBlockSelected.position.y + 10
+        townText.position.x = boxTownSelected.position.x + 10
+        townText.position.y = boxTownSelected.position.y + 10
         // add click callbacks
         btnZoomIn.interactive = btnZoomIn.buttonMode = true;
         btnZoomOut.interactive = btnZoomOut.buttonMode = true;
@@ -83,20 +107,42 @@
             engine.zoomOut();
         };
 
+        fetch("{{ url_for('blocks') }}")
+          .then(function(response) {
+            return response.json()
+        })
+        .then(function(data) {
+          Object.keys(data).forEach(town => {
+            Object.keys(data[town]).forEach(block_name => {
+              let block_poss = data[town][block_name]
+	      for (let i=0; i < block_poss.length; i++) {
+                let block_pos = block_poss[i]
+	        obj = engine.getObjectsAtRowAndColumn(block_pos["x"], block_pos["y"])
+		if (obj != null) {
+                  obj[0].name = block_name
+                  obj[0].town = town
+		}
+              }
+            })
+          })
+        })
+
         fetch("{{ url_for('vehicles') }}")
           .then(function(response) {
             return response.json()
         })
         .then(function(data) {
-          Object.keys(data).forEach(namespace => {
-            Object.keys(data[namespace]).forEach(vehicle => {
-              start_pos = data[namespace][vehicle][0]
-              next_pos = data[namespace][vehicle][1]
+          Object.keys(data).forEach(town => {
+            Object.keys(data[town]).forEach(vehicle => {
+              start_pos = data[town][vehicle][0]
+              next_pos = data[town][vehicle][1]
               obj = engine.getObjectsAtRowAndColumn(start_pos["x"], start_pos["y"])[0]
               obj.name = vehicle
-              obj.trip = data[namespace][vehicle]
+              obj.town = town
+              obj.buttonMode = true
+              obj.trip = data[town][vehicle]
               obj.step = 1
-              engine.checkAndMoveObjectToLocation(obj, {c: data[namespace][vehicle][1]["y"], r: data[namespace][vehicle][1]["x"]}, 2)
+              engine.checkAndMoveObjectToLocation(obj, {c: data[town][vehicle][1]["y"], r: data[town][vehicle][1]["x"]}, 2)
             })
           })
         })
